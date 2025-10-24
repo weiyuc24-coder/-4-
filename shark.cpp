@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <cstdlib>
+#include <cstring>
 #include <ctime>
 #include <iostream>
 #include <utility>
@@ -47,6 +47,7 @@ int main() {
 }
 
 void first_deal(int playerAmount) {
+    cout << "\n--- First Deal ---\n";
     int card1[5] = {0};
     srand(time(0));
     do {
@@ -74,8 +75,8 @@ void first_deal(int playerAmount) {
         eachCardsLeft[card1[i]]--;
         cardsLeft--;
     }
-    void show_each_hands();
-    void show_table_cards();
+    show_each_hands();
+    show_table_cards();
 }
 
 void show_each_hands() {
@@ -93,13 +94,15 @@ void show_table_cards() {
     cout << "\nTable Cards:\n";
     for (int i = 0; i < playerAmount; i++) {
         cout << "Area" << i + 1 << ": ";
+        if (areaTaken[i]) {
+            cout << "[Already been taken]\n";
+            continue;
+        } else if (areaCards[i].empty()) {
+            cout << "[Empty]\n";
+            continue;
+        }
         for (int j = 0; j < areaCards[i].size(); j++) {
-            if (j < 0) {
-                cout << "\n";
-                continue;
-            } else {
-                cout << colors[areaCards[i][j]] << "\t";
-            }
+            cout << colors[areaCards[i][j]] << "\t";
         }
         cout << "\n";
     }
@@ -118,6 +121,7 @@ void game_loop(int playerAmount, int currentPlayer) {
             place_card(draw_card());
         } else {
             user_take_area();
+            playerFinished[0] = true;
         }
     } else {
         cout << "\nAI" << currentPlayer << "'s turn\n";
@@ -167,6 +171,7 @@ void place_card(int card) {
     } else if (areaCards[inputArea - 1].size() < 3) {
         areaCards[inputArea - 1].push_back(card);
         cout << "Placed \"" << colors[card] << "\" card in Area" << inputArea << ".\n";
+        show_each_hands();
         show_table_cards();
     } else {
         cout << "This area is full. Choose another area.\n";
@@ -206,6 +211,13 @@ void user_take_area() {
         cout << "There are no area you can take back, you can only draw card\n";
         place_card(draw_card());
     }
+}
+
+bool cmp(pair<int, int> a, pair<int, int> b) {
+    if (a.second == b.second) {
+        return a.first < b.first;
+    }
+    return a.second > b.second;
 }
 
 void AI(int AIIndex) {
@@ -312,6 +324,8 @@ void AI(int AIIndex) {
             areaCards[bestArea].push_back(drawnCard);
             cout << "AI" << AIIndex << " placed \"" << colors[drawnCard] << "\" card in Area" << bestArea + 1 << ".\n";
         }
+        show_each_hands();
+        show_table_cards();
     } else {
         cout << "AI" << AIIndex << " decides to take back Area" << bestAction << ".\n";
         for (int card : areaCards[bestAction - 1]) {
@@ -329,7 +343,7 @@ int next_player(int currentPlayer) {
     int next = (currentPlayer + 1) % playerAmount;
     while (playerFinished[next]) {
         next = (next + 1) % playerAmount;
-        if (next == currentPlayer) {
+        if (next == currentPlayer && playerFinished[next]) {
             new_round();
             break;
         }
@@ -347,13 +361,6 @@ void new_round() {
     memset(playerFinished, false, sizeof(playerFinished));
     memset(areaTaken, false, sizeof(areaTaken));
     show_table_cards();
-}
-
-bool cmp(pair<int, int> a, pair<int, int> b) {
-    if (a.second == b.second) {
-        return a.first < b.first;
-    }
-    return a.second > b.second;
 }
 
 void count_score() {
