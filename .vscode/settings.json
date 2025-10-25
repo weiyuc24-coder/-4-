@@ -3,6 +3,7 @@
         "iomanip": "cpp",
         "iostream": "cpp",
         "utility": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "algorithm": "cpp"
     }
 }

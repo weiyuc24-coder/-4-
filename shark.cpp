@@ -394,11 +394,8 @@ void count_score() {
         scores[i] = make_pair(i, 0);  // first: player index, second: score
         sort(dealtCards[i], dealtCards[i] + 7, greater<int>());
         scores[i].second += dealtCards[i][0] + dealtCards[i][1] + dealtCards[i][2];
-        cout << "Player " << i << " top 3 cards score: " << scores[i].second << "\n";
         scores[i].second += dealtCards[i][8] * 2;
-        cout << "Player " << i << " +2 cards score: " << dealtCards[i][8] * 2 << "\n";
         scores[i].second -= dealtCards[i][3] + dealtCards[i][4] + dealtCards[i][5] + dealtCards[i][6];
-        cout << "Player " << i << " bottom 4 cards penalty: -" << dealtCards[i][3] + dealtCards[i][4] + dealtCards[i][5] + dealtCards[i][6] << "\n";
     }
 
     cout << "\n--- Final Scores ---\n";
