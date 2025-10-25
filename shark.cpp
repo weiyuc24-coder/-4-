@@ -121,7 +121,6 @@ void game_loop(int playerAmount, int currentPlayer) {
             place_card(draw_card());
         } else {
             user_take_area();
-            playerFinished[0] = true;
         }
     } else {
         cout << "\nAI" << currentPlayer << "'s turn\n";
@@ -133,6 +132,7 @@ void game_loop(int playerAmount, int currentPlayer) {
 int draw_card() {
     bool canPlace = false;  // check if there is space to place the card
     for (int i = 0; i < playerAmount; i++) {
+        if (areaTaken[i]) continue;
         if (areaCards[i].size() < 3) {
             canPlace = true;
             break;
@@ -140,7 +140,7 @@ int draw_card() {
     }
     if (!canPlace) {
         cout << "All areas are full, you can only take area back\n";
-        user_take_area();
+        return -1;
     } else {
         while (true) {
             int card = rand() % 9;  // draw a random card
@@ -159,6 +159,10 @@ int draw_card() {
 }
 
 void place_card(int card) {
+    if (card == -1) {
+        user_take_area();
+        return;
+    }
     cout << "Choose an area to place the card (1-" << playerAmount << "): ";
     int inputArea;
     while (scanf("%d", &inputArea) != 1 || inputArea < 1 || inputArea > playerAmount) {
@@ -198,6 +202,7 @@ void user_take_area() {
                     cout << "You took back Area" << takenArea << ".\n";
                     show_each_hands();
                     show_table_cards();
+                    playerFinished[0] = true;
                     break;
                 } else {
                     cout << "This area has been taken, please take another one\n";
