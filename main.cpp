@@ -1,2005 +1,504 @@
-#include<iostream>
-#include<cstdlib>
-#include<ctime>	
-#include <iomanip>
 #include <algorithm>
-#include<utility>
-#include<string>
+#include <cstring>
+#include <string>
+#include <ctime>
+#include <iostream>
+#include <utility>
+#include <vector>
 using namespace std;
 
-//cards that had been used
-int red;
-int pink;
-int yellow;
-int orange;
-int blue;
-int green;
-int gray;
-int rainbow;
-int plus2;
+int playerAmount;
+int cardsLeft = 76;
+int eachCardsLeft[9] = { 9, 9, 9, 9, 9, 9, 9, 3, 10 };           // cards of each type left
+int dealtCards[5][9] = {};                                     // dealtCards[player][color], 0: user, 1: AI1, 2: AI2, 3: AI3 4: AI4
+vector<int> areaCards[5] = {};                                 // 5 areas, each area can hold up to 3 cards
+bool playerFinished[5] = { false, false, false, false, false };  // whether player has finished their turn
+bool areaTaken[5] = { false, false, false, false, false };       // whether area has been taken
+string colors[9] = { "Red", "Pink", "Yellow", "Orange", "Blue", "Green", "Gray", "Rainbow", "Plus2" };
+bool isLastRound = false, isGameEnd = false;
 
-int input_area_again;
-
-int total_used_cards = 0;//when used cards accumulate to 61, the next card will be END CARD
-
-int area1_placed_card_amount = 0;
-int area2_placed_card_amount = 0;
-int area3_placed_card_amount = 0;
-int area4_placed_card_amount = 0;
-
-int area3[4] = {};
-int area2[4] = {};
-int area1[4] = {};
-int area4[4] = {};
-
-//players' hand cards
-int user_cards[10] = {};
-int AI1_cards[10] = {};
-int AI2_cards[10] = {};
-int AI3_cards[10] = {};
-
-enum area_status { no_card, can_put_card, full, been_taken };
-enum player_status { play, end_play };
-enum round_status { last_round, not_last_round };
-enum last_one_or_not { last_one, not_last_one };
-
-round_status last_round_or_not;
-
-last_one_or_not is_user_last_one;
-last_one_or_not is_AI1_last_one;
-last_one_or_not is_AI2_last_one;
-last_one_or_not is_AI3_last_one;
-
-
-area_status area1_status;
-area_status area2_status;
-area_status area3_status;
-area_status area4_status;
-
-player_status user_status;
-player_status AI1_status;
-player_status AI2_status;
-player_status AI3_status;
-
-void four_player_game_of_user();
-void four_people_first_round_draw();
+void first_deal(int);
+void show_each_hands();
+void show_table_cards();
+void game_loop(int, int);
 int draw_card();
 void place_card(int);
 void user_take_area();
-void count_point();
-int add_to_each_card_sum(int);
-int draw_card_again();
-void AI1();
-void AI2();
-void AI3();
-void decide_fisrt_player_next_round();
-void user_decide_who_is_next_player();
-void AI1_decide_who_is_next_player();
-void AI2_decide_who_is_next_player();
-void AI3_decide_who_is_next_player();
+void AI(int);
+int next_player(int);
+void new_round();
+void count_score();
 
-void show_each_player_cards();
-
-void show_table_cards();
-void count_area1_cards(int);
-void count_area2_cards(int);
-void count_area3_cards(int);
-void count_area4_cards(int);
-
-int array_for_counting_area1_cards[10];
-int array_for_counting_area2_cards[10];
-int array_for_counting_area3_cards[10];
-int array_for_counting_area4_cards[10];
-
-bool cmp(pair<string, int> a, pair<string, int> b)
-{
-	return a.second > b.second;
+int main() {
+	cout << "Enter number of players (3-5): ";
+	while (scanf_s("%d", &playerAmount) != 1 || playerAmount < 3 || playerAmount > 5) {
+		// clear invalid input until \n
+		while (getchar() != '\n');  
+		cout << "Invalid input. Please enter a number between 3 and 5: ";
+	}
+	if (playerAmount == 3) {
+		srand(time(0));
+		// randomly remove one color
+		int removedColor = rand() % 7;  
+		eachCardsLeft[removedColor] = 0;
+		cardsLeft -= 9;
+	}
+	first_deal(playerAmount);
+	game_loop(playerAmount, 0);
+	count_score();
 }
 
-int main()
-{
-	//cards that had been used
-	red = 0;
-	pink = 0;
-	yellow = 0;
-	orange = 0;
-	blue = 0;
-	green = 0;
-	gray = 0;
-	rainbow = 0;
-	plus2 = 0;
-
+void first_deal(int playerAmount) {
+	cout << "\n--- First Deal ---\n";
+	int card1[5] = { 0 };
 	srand(time(0));
-
-	for (int i = 0; i < 10; i++)
-	{
-		user_cards[i] = 0;
-		AI1_cards[i] = 0;
-		AI2_cards[i] = 0;
-		AI3_cards[i] = 0;
+	do {
+		card1[0] = rand() % 7;
+	} while (eachCardsLeft[card1[0]] == 0);
+	do {
+		card1[1] = rand() % 7;
+	} while (card1[1] == card1[0] || eachCardsLeft[card1[1]] == 0);//if drawed card has repeated, draw again
+	do {
+		card1[2] = rand() % 7;
+	} while (card1[2] == card1[0] || card1[2] == card1[1] || eachCardsLeft[card1[2]] == 0);//if drawed card has repeated, draw again
+	if (playerAmount >= 4) {
+		do {
+			card1[3] = rand() % 7;
+		} while (card1[3] == card1[0] || card1[3] == card1[1] || card1[3] == card1[2] || eachCardsLeft[card1[3]] == 0);//if drawed card has repeated, draw again
 	}
-	for (int i = 0; i < 4; i++)
-	{
-		area1[i] = 0;
-		area2[i] = 0;
-		area3[i] = 0;
-		area4[i] = 0;
+	if (playerAmount == 5) {
+		do {
+			card1[4] = rand() % 7;
+		} while (card1[4] == card1[0] || card1[4] == card1[1] || card1[4] == card1[2] || card1[4] == card1[3] || eachCardsLeft[card1[3]] == 0);//if drawed card has repeated, draw again
 	}
 
-	last_round_or_not = not_last_round;
-
-	total_used_cards = 0;
-
-	is_user_last_one = not_last_one;
-	is_AI1_last_one = not_last_one;
-	is_AI2_last_one = not_last_one;
-	is_AI3_last_one = not_last_one;
-
-	area1_status = no_card;
-	area2_status = no_card;
-	area3_status = no_card;
-	area4_status = no_card;
-
-	user_status = play;
-	AI1_status = play;
-	AI2_status = play;
-	AI3_status = play;
-
-	four_people_first_round_draw();
-	four_player_game_of_user();
-}
-
-void four_player_game_of_user()
-{
-	srand(time(0));
-	cout << "\nuser's turn\n" << "input 1 to draw card, input 2 to take area\n";
-	int user_action;
-	cin >> user_action;
-	while (user_action != 1 && user_action != 2)
-	{
-		cout << "input error, please input 1 to draw card, input 2 to take area\n";
-		cin >> user_action;
+	for (int i = 0; i < playerAmount; i++) {
+		dealtCards[i][card1[i]]++;
+		eachCardsLeft[card1[i]]--;
+		cardsLeft--;
 	}
-	switch (user_action)
-	{
-	case 1:
-		place_card(draw_card());
-		break;
-	case 2:
-		user_take_area();
-		break;
-	}
-}
-
-void four_people_first_round_draw()
-{
-	srand(time(0));
-	total_used_cards = 4;
-	int a = 1 + rand() % 7;
-	int b = 1 + rand() % 7;
-	int c = 1 + rand() % 7;
-	int d = 1 + rand() % 7;
-	while (a == b || a == c || a == d || b == c || b == d || c == d)//if have same card, draw again
-	{
-		a = 1 + rand() % 7;
-		b = 1 + rand() % 7;
-		c = 1 + rand() % 7;
-		d = 1 + rand() % 7;
-	}
-	add_to_each_card_sum(a);
-	add_to_each_card_sum(b);
-	add_to_each_card_sum(c);
-	add_to_each_card_sum(d);
-	//give cards to players' array
-	user_cards[a] ++;
-	AI1_cards[b] ++;
-	AI2_cards[c] ++;
-	AI3_cards[d] ++;
-	show_each_player_cards();
+	show_each_hands();
 	show_table_cards();
 }
 
-void show_each_player_cards()
-{
-	cout << "\nuser:\n" << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << user_cards[1] << setw(10) << user_cards[2] << setw(10) << user_cards[3] << setw(10) << user_cards[4] << setw(10) << user_cards[5] << setw(10) << user_cards[6] << setw(10) << user_cards[7] << setw(10) << user_cards[8] << setw(10) << user_cards[9];
-
-	cout << "\nAI1:\n" << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << AI1_cards[1] << setw(10) << AI1_cards[2] << setw(10) << AI1_cards[3] << setw(10) << AI1_cards[4] << setw(10) << AI1_cards[5] << setw(10) << AI1_cards[6] << setw(10) << AI1_cards[7] << setw(10) << AI1_cards[8] << setw(10) << AI1_cards[9];
-
-	cout << "\nAI2:\n" << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << AI2_cards[1] << setw(10) << AI2_cards[2] << setw(10) << AI2_cards[3] << setw(10) << AI2_cards[4] << setw(10) << AI2_cards[5] << setw(10) << AI2_cards[6] << setw(10) << AI2_cards[7] << setw(10) << AI2_cards[8] << setw(10) << AI2_cards[9];
-
-	cout << "\nAI3:\n" << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << AI3_cards[1] << setw(10) << AI3_cards[2] << setw(10) << AI3_cards[3] << setw(10) << AI3_cards[4] << setw(10) << AI3_cards[5] << setw(10) << AI3_cards[6] << setw(10) << AI3_cards[7] << setw(10) << AI3_cards[8] << setw(10) << AI3_cards[9];
-}
-
-void show_table_cards()
-{
-	//clear them to calculate again
-	for (int i = 1; i < 10; i++)
-		array_for_counting_area1_cards[i] = 0;
-	for (int i = 1; i < 4; i++)
-	{
-		count_area1_cards(area1[i]);
-	}
-	cout << "\n\narea1:\n";
-	cout << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << array_for_counting_area1_cards[1] << setw(10) << array_for_counting_area1_cards[2] << setw(10) << array_for_counting_area1_cards[3] << setw(10) << array_for_counting_area1_cards[4] << setw(10) << array_for_counting_area1_cards[5] << setw(10) << array_for_counting_area1_cards[6] << setw(10) << array_for_counting_area1_cards[7] << setw(10) << array_for_counting_area1_cards[8] << setw(10) << array_for_counting_area1_cards[9] << endl;
-
-
-	//clear them to calculate again
-	for (int i = 1; i < 10; i++)
-		array_for_counting_area2_cards[i] = 0;
-
-	for (int i = 1; i < 4; i++)
-	{
-		count_area2_cards(area2[i]);
-	}
-	cout << "area2:\n";
-	cout << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << array_for_counting_area2_cards[1] << setw(10) << array_for_counting_area2_cards[2] << setw(10) << array_for_counting_area2_cards[3] << setw(10) << array_for_counting_area2_cards[4] << setw(10) << array_for_counting_area2_cards[5] << setw(10) << array_for_counting_area2_cards[6] << setw(10) << array_for_counting_area2_cards[7] << setw(10) << array_for_counting_area2_cards[8] << setw(10) << array_for_counting_area2_cards[9] << endl;
-
-
-	//clear them to calculate again
-	for (int i = 1; i < 10; i++)
-		array_for_counting_area3_cards[i] = 0;
-
-	for (int i = 1; i < 4; i++)
-	{
-		count_area3_cards(area3[i]);
-	}
-	cout << "area3:\n";
-	cout << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << array_for_counting_area3_cards[1] << setw(10) << array_for_counting_area3_cards[2] << setw(10) << array_for_counting_area3_cards[3] << setw(10) << array_for_counting_area3_cards[4] << setw(10) << array_for_counting_area3_cards[5] << setw(10) << array_for_counting_area3_cards[6] << setw(10) << array_for_counting_area3_cards[7] << setw(10) << array_for_counting_area3_cards[8] << setw(10) << array_for_counting_area3_cards[9] << endl;
-
-
-	//clear them to calculate again
-	for (int i = 1; i < 10; i++)
-		array_for_counting_area4_cards[i] = 0;
-
-	for (int i = 1; i < 4; i++)
-	{
-		count_area4_cards(area4[i]);
-	}
-	cout << "area4:\n";
-	cout << setw(10) << "red" << setw(10) << "pink" << setw(10) << "yellow" << setw(10) << "orange" << setw(10) << "blue" << setw(10) << "green" << setw(10) << "gray" << setw(10) << "rainbow" << setw(10) << "plus2\n";
-	cout << setw(10) << array_for_counting_area4_cards[1] << setw(10) << array_for_counting_area4_cards[2] << setw(10) << array_for_counting_area4_cards[3] << setw(10) << array_for_counting_area4_cards[4] << setw(10) << array_for_counting_area4_cards[5] << setw(10) << array_for_counting_area4_cards[6] << setw(10) << array_for_counting_area4_cards[7] << setw(10) << array_for_counting_area4_cards[8] << setw(10) << array_for_counting_area4_cards[9] << endl;
-}
-
-void count_area1_cards(int x)
-{
-	switch (x)
-	{
-	case 1:
-		array_for_counting_area1_cards[1]++;
-		break;
-
-	case 2:
-		array_for_counting_area1_cards[2]++;
-		break;
-
-	case 3:
-		array_for_counting_area1_cards[3]++;
-		break;
-
-	case 4:
-		array_for_counting_area1_cards[4]++;
-		break;
-
-	case 5:
-		array_for_counting_area1_cards[5]++;
-		break;
-
-	case 6:
-		array_for_counting_area1_cards[6]++;
-		break;
-
-	case 7:
-		array_for_counting_area1_cards[7]++;
-		break;
-
-	case 8:
-		array_for_counting_area1_cards[8]++;
-		break;
-
-	case 9:
-		array_for_counting_area1_cards[9]++;
-		break;
+void show_each_hands() {
+	cout << "\nUser:\n"
+		<< "Red\tPink\tYellow\tOrange\tBlue\tGreen\tGray\tRainbow\tPlus2\n"
+		<< dealtCards[0][0] << "\t" << dealtCards[0][1] << "\t" << dealtCards[0][2] << "\t" << dealtCards[0][3] << "\t" << dealtCards[0][4] << "\t" << dealtCards[0][5] << "\t" << dealtCards[0][6] << "\t" << dealtCards[0][7] << "\t" << dealtCards[0][8] << "\n";
+	for (int i = 1; i < playerAmount; i++) {
+		cout << "AI" << i << ":\n"
+			<< "Red\tPink\tYellow\tOrange\tBlue\tGreen\tGray\tRainbow\tPlus2\n"
+			<< dealtCards[i][0] << "\t" << dealtCards[i][1] << "\t" << dealtCards[i][2] << "\t" << dealtCards[i][3] << "\t" << dealtCards[i][4] << "\t" << dealtCards[i][5] << "\t" << dealtCards[i][6] << "\t" << dealtCards[i][7] << "\t" << dealtCards[i][8] << "\n";
 	}
 }
 
-void count_area2_cards(int x)
-{
-	switch (x)
-	{
-	case 1:
-		array_for_counting_area2_cards[1]++;
-		break;
-
-	case 2:
-		array_for_counting_area2_cards[2]++;
-		break;
-
-	case 3:
-		array_for_counting_area2_cards[3]++;
-		break;
-
-	case 4:
-		array_for_counting_area2_cards[4]++;
-		break;
-
-	case 5:
-		array_for_counting_area2_cards[5]++;
-		break;
-
-	case 6:
-		array_for_counting_area2_cards[6]++;
-		break;
-
-	case 7:
-		array_for_counting_area2_cards[7]++;
-		break;
-
-	case 8:
-		array_for_counting_area2_cards[8]++;
-		break;
-
-	case 9:
-		array_for_counting_area2_cards[9]++;
-		break;
+void show_table_cards() {
+	cout << "\nTable Cards:\n";
+	for (int i = 0; i < playerAmount; i++) {
+		cout << "Area" << i + 1 << ": ";
+		if (areaTaken[i]) {
+			cout << "[Already been taken]\n";
+			continue;
+		}
+		else if (areaCards[i].empty()) {
+			cout << "[Empty]\n";
+			continue;
+		}
+		for (int j = 0; j < areaCards[i].size(); j++) {
+			cout << colors[areaCards[i][j]] << "\t";
+		}
+		cout << "\n";
 	}
 }
 
-void count_area3_cards(int x)
-{
-	switch (x)
-	{
-	case 1:
-		array_for_counting_area3_cards[1]++;
-		break;
-
-	case 2:
-		array_for_counting_area3_cards[2]++;
-		break;
-
-	case 3:
-		array_for_counting_area3_cards[3]++;
-		break;
-
-	case 4:
-		array_for_counting_area3_cards[4]++;
-		break;
-
-	case 5:
-		array_for_counting_area3_cards[5]++;
-		break;
-
-	case 6:
-		array_for_counting_area3_cards[6]++;
-		break;
-
-	case 7:
-		array_for_counting_area3_cards[7]++;
-		break;
-
-	case 8:
-		array_for_counting_area3_cards[8]++;
-		break;
-
-	case 9:
-		array_for_counting_area3_cards[9]++;
-		break;
-	}
-}
-
-void count_area4_cards(int x)
-{
-	switch (x)
-	{
-	case 1:
-		array_for_counting_area4_cards[1]++;
-		break;
-
-	case 2:
-		array_for_counting_area4_cards[2]++;
-		break;
-
-	case 3:
-		array_for_counting_area4_cards[3]++;
-		break;
-
-	case 4:
-		array_for_counting_area4_cards[4]++;
-		break;
-
-	case 5:
-		array_for_counting_area4_cards[5]++;
-		break;
-
-	case 6:
-		array_for_counting_area4_cards[6]++;
-		break;
-
-	case 7:
-		array_for_counting_area4_cards[7]++;
-		break;
-
-	case 8:
-		array_for_counting_area4_cards[8]++;
-		break;
-
-	case 9:
-		array_for_counting_area4_cards[9]++;
-		break;
-	}
-}
-
-int draw_card()
-{
-	//only when there are space to put can user draw the card
-	if (area1_placed_card_amount == 3 && area2_status == been_taken && area3_status == been_taken && area4_status == been_taken)
-	{
-		cout << "areas are all full or be taken, you can only take area back\n";
-		user_take_area();
-	}
-	else
-	{
-		if (area1_status == been_taken && area2_placed_card_amount == 3 && area3_status == been_taken && area4_status == been_taken)
-		{
-			cout << "areas are all full or be taken, you can only take area back\n";
-			user_take_area();
+void game_loop(int playerAmount, int currentPlayer) {
+	if (isGameEnd) return;
+	if (currentPlayer == 0) {
+		cout << "\nUser's turn\nInput 1 to draw card to place on the area, 2 to take card from area\n";
+		int userAction;
+		while (scanf_s("%d", &userAction) != 1 || (userAction != 1 && userAction != 2)) {
+			// clear invalid input until \n
+			while (getchar() != '\n');  
+			cout << "Invalid input. Please input 1 to draw card to place on the area, 2 to take card from area\n";
 		}
-		else
-		{
-			if (area1_status == been_taken && area2_status == been_taken && area3_placed_card_amount == 3 && area4_status == been_taken)
-			{
-				cout << "areas are all full or be taken, you can only take area back\n";
-				user_take_area();
-			}
-			else
-			{
-				if (area1_status == been_taken && area2_status == been_taken && area3_status == been_taken && area4_placed_card_amount == 3)
-				{
-					cout << "areas are all full or be taken, you can only take area back\n";
-					user_take_area();
-				}
-
-				//if there are space to place the card
-				else
-				{
-					if (total_used_cards != 61)
-					{
-						int final_card;
-
-						total_used_cards++;
-						int card = 1 + rand() % 9;
-						card = add_to_each_card_sum(card);
-
-						if (card == 1)
-							cout << "get RED card" << endl;
-						else if (card == 2)
-							cout << "get PINK card" << endl;
-						else if (card == 3)
-							cout << "get YELLOW card" << endl;
-						else if (card == 4)
-							cout << "get ORANGE card" << endl;
-						else if (card == 5)
-							cout << "get BLUE card" << endl;
-						else if (card == 6)
-							cout << "get GREEN card" << endl;
-						else if (card == 7)
-							cout << "get GRAY card" << endl;
-						else if (card == 8)
-							cout << "get RAINBOW card" << endl;
-						else if (card == 9)
-							cout << "get PLUS2 card" << endl;
-						return card;
-					}
-					else//if next card is 62th, get LAST ROUND card
-					{
-						total_used_cards++;
-						cout << "\n\nget LAST ROUND CARD\n\n\n";
-						last_round_or_not = last_round;
-						int card = 1 + rand() % 9;
-						card = add_to_each_card_sum(card);
-
-						if (card == 1)
-							cout << "get RED card" << endl;
-						else if (card == 2)
-							cout << "get PINK card" << endl;
-						else if (card == 3)
-							cout << "get YELLOW card" << endl;
-						else if (card == 4)
-							cout << "get ORANGE card" << endl;
-						else if (card == 5)
-							cout << "get BLUE card" << endl;
-						else if (card == 6)
-							cout << "get GREEN card" << endl;
-						else if (card == 7)
-							cout << "get GRAY card" << endl;
-						else if (card == 8)
-							cout << "get RAINBOW card" << endl;
-						else if (card == 9)
-							cout << "get PLUS2 card" << endl;
-						return card;
-					}
-				}
-			}
-		}
-	}
-}
-
-void place_card(int input_card)
-{
-	is_user_last_one = not_last_one;
-	is_AI1_last_one = not_last_one;
-	is_AI2_last_one = not_last_one;
-	is_AI3_last_one = not_last_one;
-
-	int input_area;
-	cout << "please choose area number(1~4) to place\n";
-	cin >> input_area;
-	if (input_area == 1)
-	{
-		if (area1_placed_card_amount != 3)//if the area had already put 3 cards, choose another area
-		{
-			if (area1_status != been_taken)
-			{
-				for (int i = 1; i < 4; i++)
-				{
-					if (area1[i] == 0)//put card in the first empty place 
-					{
-						area1[i] = input_card;
-						area1_placed_card_amount++;
-						area1_status = can_put_card;
-						show_table_cards();
-						break;
-					}
-				}
-				user_decide_who_is_next_player();
-				decide_fisrt_player_next_round();
-			}
-			else
-			{
-				cout << "this area had been taken ";
-				place_card(input_card);
-			}
-		}
-		else
-		{
-			cout << "this area was full\n";
-			place_card(input_card);
-		}
-	}
-	else if (input_area == 2)
-	{
-		if (area2_placed_card_amount != 3)//if the area had already put 3 cards, choose another area
-		{
-			if (area2_status != been_taken)
-			{
-				for (int i = 1; i < 4; i++)
-				{
-					if (area2[i] == 0)//put card in the first empty place 
-					{
-						area2[i] = input_card;
-						area2_placed_card_amount++;
-						area2_status = can_put_card;
-						show_table_cards();
-						break;
-					}
-				}
-				user_decide_who_is_next_player();
-				decide_fisrt_player_next_round();
-			}
-			else
-			{
-				cout << "this area had been taken\n";
-				place_card(input_card);
-			}
-		}
-		else
-		{
-			cout << "this area is full\n";
-			place_card(input_card);
-		}
-	}
-	else if (input_area == 3)
-	{
-		if (area3_placed_card_amount != 3)//if the area had already put 3 cards, choose another area
-		{
-			if (area3_status != been_taken)
-			{
-				for (int i = 1; i < 4; i++)
-				{
-					if (area3[i] == 0)//put card in the first empty place 
-					{
-						area3[i] = input_card;
-						area3_placed_card_amount++;
-						area3_status = can_put_card;
-						show_table_cards();
-						break;
-					}
-				}
-				user_decide_who_is_next_player();
-				decide_fisrt_player_next_round();
-			}
-			else
-			{
-				cout << "this area had been taken\n";
-				place_card(input_card);
-			}
-		}
-		else
-		{
-			cout << "this area is full\n ";
-			place_card(input_card);
-		}
-	}
-	else if (input_area == 4)
-	{
-		if (area4_placed_card_amount != 3)//if the area had already put 3 cards, choose another area
-		{
-			if (area4_status != been_taken)
-			{
-				for (int i = 1; i < 4; i++)
-				{
-					if (area4[i] == 0)//put card in the first empty place 
-					{
-						area4[i] = input_card;
-						area4_placed_card_amount++;
-						area4_status = can_put_card;
-						show_table_cards();
-						break;
-					}
-				}
-				user_decide_who_is_next_player();
-				decide_fisrt_player_next_round();
-			}
-			else
-			{
-				cout << "this area had been taken\n";
-				place_card(input_card);
-			}
-		}
-		else
-		{
-			cout << "this area is full\n";
-			place_card(input_card);
-		}
-	}
-	else
-	{
-		cout << "input error\n ";
-		place_card(input_card);
-	}
-}
-
-void user_take_area()
-{
-	//only when there are cards exist on table can user take the area back
-	if (area1_placed_card_amount + area2_placed_card_amount + area3_placed_card_amount + area4_placed_card_amount > 0)
-	{
-		int taken_area_number;
-		cout << "Which row do you want to take back:\n";
-		cin >> taken_area_number;
-		//if no cards were placed, can't take area back
-		if (area1_status == no_card && area2_status == no_card && area3_status == no_card && area4_status == no_card)
-		{
-			cout << "there don't have area that is available to take back" << endl << "you can only draw card, and camputer will help you draw\n";
+		if (userAction == 1) {
 			place_card(draw_card());
 		}
-		else
-		{
-			if (taken_area_number == 1 || taken_area_number == 2 || taken_area_number == 3 || taken_area_number == 4)
-			{
-				if (taken_area_number == 1)
-				{
-					if (area1_status == can_put_card || area1_status == full)
-					{
-						for (int i = 1; i < 4; i++)
-						{
-							user_cards[area1[i]]++;
-							area1[i] = 0;
-						}
-						area1_placed_card_amount = 0;
-						area1_status = been_taken;
-						user_status = end_play;
-						show_table_cards();
-						show_each_player_cards();
-						if (AI1_status == end_play && AI2_status == end_play && AI3_status == end_play)
-						{
-							is_user_last_one = last_one;
-						}
-						user_decide_who_is_next_player();
-						decide_fisrt_player_next_round();
-					}
-					else
-					{
-						cout << "area1 cannot be taken, please take another one\n";
-						user_take_area();
-					}
+		else {
+			user_take_area();
+		}
+	}
+	else {
+		cout << "\nAI" << currentPlayer << "'s turn\n";
+		AI(currentPlayer);
+	}
+	game_loop(playerAmount, next_player(currentPlayer));
+}
+
+int draw_card() {
+	bool canPlace = false;  
+	// check if there is space to place the card
+	for (int i = 0; i < playerAmount; i++) {
+		if (areaTaken[i])	continue;
+		if (areaCards[i].size() < 3) {
+			canPlace = true;
+			break;
+		}
+	}
+	if (!canPlace) {
+		cout << "All areas are full, you can only take area back\n";
+		return -1;
+	}
+	else {
+		//keep looping until get a card that its remain more than 0 card left
+		while (true) {
+			// draw a random card
+			int card = rand() % 9;  
+			if (eachCardsLeft[card] > 0) {
+				eachCardsLeft[card]--;
+				cardsLeft--;
+				if (cardsLeft == 14) {
+					isLastRound = true;
+					cout << "\n!!!Last round!!!\n\n";
 				}
-				else if (taken_area_number == 2)
-				{
-					if (area2_status == can_put_card || area2_status == full)
-					{
-						for (int i = 1; i < 4; i++)
-						{
-							user_cards[area2[i]]++;
-							area2[i] = 0;
-						}
-						area2_placed_card_amount = 0;
-						area2_status = been_taken;
-						user_status = end_play;
-						show_table_cards();
-						show_each_player_cards();
-						if (AI1_status == end_play && AI2_status == end_play && AI3_status == end_play)
-						{
-							is_user_last_one = last_one;
-						}
-						user_decide_who_is_next_player();
-						decide_fisrt_player_next_round();
-					}
-					else
-					{
-						cout << "area2 cannot be taken, please take another one\n";
-						user_take_area();
-					}
-				}
-				else if (taken_area_number == 3)
-				{
-					if (area3_status == can_put_card || area3_status == full)
-					{
-						for (int i = 1; i < 4; i++)
-						{
-							user_cards[area3[i]]++;
-							area3[i] = 0;
-						}
-						area3_placed_card_amount = 0;
-						area3_status = been_taken;
-						user_status = end_play;
-						show_table_cards();
-						show_each_player_cards();
-						if (AI1_status == end_play && AI2_status == end_play && AI3_status == end_play)
-						{
-							is_user_last_one = last_one;
-						}
-						user_decide_who_is_next_player();
-						decide_fisrt_player_next_round();
-					}
-					else
-					{
-						cout << "area3 cannot be taken, please take another one\n";
-						user_take_area();
-					}
-				}
-				else if (taken_area_number == 4)
-				{
-					if (area4_status == can_put_card || area4_status == full)
-					{
-						for (int i = 1; i < 4; i++)
-						{
-							user_cards[area4[i]]++;
-							area4[i] = 0;
-						}
-						area4_placed_card_amount = 0;
-						area4_status = been_taken;
-						user_status = end_play;
-						show_table_cards();
-						show_each_player_cards();
-						if (AI1_status == end_play && AI2_status == end_play && AI3_status == end_play)
-						{
-							is_user_last_one = last_one;
-						}
-						user_decide_who_is_next_player();
-						decide_fisrt_player_next_round();
-					}
-					else
-					{
-						cout << "area4 cannot be taken, please take another one\n";
-						user_take_area();
-					}
-				}
-			}
-			else
-			{
-				cout << "Input error please try again!" << endl;
-				user_take_area();
+				cout << "You drew a \"" << colors[card] << "\" card.\n";
+				return card;
 			}
 		}
 	}
-	else
-	{
-		cout << "\nThere are no area you can take back, you can only draw card\n";
+}
+
+void place_card(int card) {
+	if (card == -1) {
+		user_take_area();
+		return;
+	}
+	cout << "Choose an area to place the card (1-" << playerAmount << "): ";
+	int inputArea;
+	while (scanf_s("%d", &inputArea) != 1 || inputArea < 1 || inputArea > playerAmount) {
+		// clear invalid input until \n
+		while (getchar() != '\n');  
+		cout << "Invalid input. Please choose an area to place the card (1-" << playerAmount << "): ";
+	}
+	if (areaTaken[inputArea - 1]) {
+		cout << "This area has been taken. Choose another area.\n";
+		place_card(card);
+	}
+	else if (areaCards[inputArea - 1].size() < 3) {
+		areaCards[inputArea - 1].push_back(card);
+		cout << "Placed \"" << colors[card] << "\" card in Area" << inputArea << ".\n";
+		show_each_hands();
+		show_table_cards();
+	}
+	else {
+		cout << "This area is full. Choose another area.\n";
+		place_card(card);
+	}
+}
+
+void user_take_area() {
+	int cardsInAreas = 0;
+	//check if there exist cards that enable player to take back area
+	for (int i = 0; i < playerAmount; i++) {
+		cardsInAreas += areaCards[i].size();
+	}
+	if (cardsInAreas > 0) {
+		while (true) {
+			cout << "Choose an area to take back (1-" << playerAmount << "): ";
+			int takenArea;
+			if (scanf_s("%d", &takenArea) == 1 && takenArea >= 1 && takenArea <= playerAmount) {
+				//if area has no card, choose again
+				if (!areaCards[takenArea - 1].empty()) {
+					//move area's cards to user's cards
+					for (int card : areaCards[takenArea - 1]) {
+						dealtCards[0][card]++;
+					}
+					areaCards[takenArea - 1].clear();
+					areaTaken[takenArea - 1] = true;
+					cout << "You took back Area" << takenArea << ".\n";
+					show_each_hands();
+					show_table_cards();
+					playerFinished[0] = true;
+					break;
+				}
+				else {
+					cout << "This area has been taken, please take another one\n";
+				}
+			}
+			else {
+				// clear invalid input until \n
+				while (getchar() != '\n');  
+				cout << "Invalid input. Please choose an area to take back (1-" << playerAmount << "): ";
+			}
+		}
+	}
+	else {
+		cout << "There are no area you can take back, you can only draw card\n";
 		place_card(draw_card());
 	}
 }
 
-void count_point()
-{
-	//cards that more then 7 count points as 6 cards
-	for (int i = 1; i <= 7; i++)
-	{
-		if (user_cards[i] >= 7)
-		{
-			user_cards[i] = 6;
-		}
-		if (AI1_cards[i] >= 7)
-		{
-			AI1_cards[i] = 6;
-		}
-		if (AI2_cards[i] >= 7)
-		{
-			AI2_cards[i] = 6;
-		}
-		if (AI3_cards[i] >= 7)
-		{
-			AI3_cards[i] = 6;
-		}
+bool cmp(pair<int, int> a, pair<int, int> b) {
+	if (a.second == b.second) {
+		return a.first < b.first;
 	}
+	return a.second > b.second;
+}
 
-	//sort cards amount(i = 7 has the most, i = 6 has second most ..., until i = 1 has least)
-	sort(user_cards+1, user_cards + 8);
-	sort(AI1_cards+1, AI1_cards + 8);
-	sort(AI2_cards+1, AI2_cards + 8);
-	sort(AI3_cards+1, AI3_cards + 8);
-
-	//rainbow card's most benefitial placement
-	while (user_cards[8] > 0)//if have rainbow card
-	{
-		if (user_cards[7] < 6)
-		{
-			user_cards[7]++;
-			user_cards[8]--;
+void AI(int AIIndex) {
+	int worthAction[6] = { 8, 0, 0, 0, 0, 0 };  // 0: draw, 1-5: take area 1-5
+	pair<int, int> AICards[9];                // color, count
+	for (int i = 0; i < 9; i++) {
+		AICards[i] = make_pair(i, dealtCards[AIIndex][i]);
+	}
+	sort(AICards, AICards + 7, cmp);
+	int areaLeft = 3 * playerAmount;
+	for (int i = 0; i < playerAmount; i++) {
+		if (areaTaken[i]) {
+			worthAction[i + 1] = -100;  // cannot take taken area
+			areaLeft -= 3;
 		}
-		else//user_cards[7] = 6
-		{
-			if (user_cards[6] < 6)
-			{
-				user_cards[6]++;
-				user_cards[8]--;
-			}
-			else//user_cards[6] = 6
-			{
-				user_cards[5]++;
-				user_cards[8]--;
-				if (user_cards[5] > 6)//if the three most amount cards all more than 6, don't need rainbow card
-				{
-					user_cards[5] = 6;
+		else if (areaCards[i].size() > 1) {
+			worthAction[0] -= 3;
+			areaLeft -= areaCards[i].size();
+			for (int card : areaCards[i]) {
+				if (card == 7 && AICards[0].second + AICards[1].second + AICards[2].second < 18 - AICards[7].second) {
+					worthAction[i + 1] += 5;
+				}
+				else if (card == 8) {
+					worthAction[i + 1] += 4;
+				}
+				else {
+					for (int j = 0; j < 3; j++) {
+						if (card == AICards[j].first) {
+							worthAction[i + 1] += (4 - j) * AICards[j].second;
+							break;
+						}
+					}
 				}
 			}
 		}
 	}
-	while (AI1_cards[8] > 0)//if have rainbow card
-	{
-		if (AI1_cards[7] < 6)
-		{
-			AI1_cards[7]++;
-			AI1_cards[8]--;
-		}
-		else//AI1_cards[7] = 6
-		{
-			if (AI1_cards[6] < 6)
-			{
-				AI1_cards[6]++;
-				AI1_cards[8]--;
+	if (areaLeft == 0) {
+		worthAction[0] = -100;  // cannot draw if no space to place
+	}
+	int bestAction = max_element(worthAction, worthAction + playerAmount + 1) - worthAction;
+	if (bestAction == 0) {
+		cout << "AI" << AIIndex << " decides to draw a card to place.\n";
+		srand(time(0));
+		int drawnCard;
+		while (true) {
+			drawnCard = rand() % 9;
+			if (eachCardsLeft[drawnCard] > 0) {
+				eachCardsLeft[drawnCard]--;
+				cardsLeft--;
+				if (cardsLeft == 14) {
+					isLastRound = true;
+					cout << "\n!!!Last round triggered!!!\n\n";
+				}
+				break;
 			}
-			else//AI1_cards[6] = 6
-			{
-				AI1_cards[5]++;
-				AI1_cards[8]--;
-				if (AI1_cards[5] > 6)//if the three most amount cards all more than 6, don't need rainbow card
-				{
-					AI1_cards[5] = 6;
+		}
+		cout << "AI" << AIIndex << " drew a \"" << colors[drawnCard] << "\" card.\n";
+		// place drawn card and place the area that maximizes its benefit
+		if (drawnCard == 7 || drawnCard == 8) {
+			int leastFilledArea = -1, minCards = 3;
+			for (int i = 0; i < playerAmount; i++) {
+				if (!areaTaken[i] && areaCards[i].size() < minCards) {
+					minCards = areaCards[i].size();
+					leastFilledArea = i;
 				}
 			}
+			areaCards[leastFilledArea].push_back(drawnCard);
+			cout << "AI" << AIIndex << " placed \"" << colors[drawnCard] << "\" card in Area" << leastFilledArea + 1 << ".\n";
 		}
-	}
-	while (AI2_cards[8] > 0)//if have rainbow card
-	{
-		if (AI2_cards[7] < 6)
-		{
-			AI2_cards[7]++;
-			AI2_cards[8]--;
-		}
-		else//AI2_cards[7] = 6
-		{
-			if (AI2_cards[6] < 6)
-			{
-				AI2_cards[6]++;
-				AI2_cards[8]--;
-			}
-			else//AI2_cards[6] = 6
-			{
-				AI2_cards[5]++;
-				AI2_cards[8]--;
-				if (AI2_cards[5] > 6)//if the three most amount cards all more than 6, don't need rainbow card
-				{
-					AI2_cards[5] = 6;
+		else {
+			int benefits[5] = { 0 };
+			for (int i = 0; i < playerAmount; i++) {
+				if (!areaTaken[i] && areaCards[i].size() < 3) {
+					int benefit = 0;
+					for (int j = 0; j < 3; j++) {
+						if (drawnCard == AICards[j].first) {
+							benefit += (4 - j) * AICards[j].second;
+							break;
+						}
+					}
+					benefits[i] = benefit;
 				}
 			}
-		}
-	}
-	while (AI3_cards[8] > 0)//if have rainbow card
-	{
-		if (AI3_cards[7] < 6)
-		{
-			AI3_cards[7]++;
-			AI3_cards[8]--;
-		}
-		else//AI3_cards[7] = 6
-		{
-			if (AI3_cards[6] < 6)
-			{
-				AI3_cards[6]++;
-				AI3_cards[8]--;
-			}
-			else//AI3_cards[6] = 6
-			{
-				AI3_cards[5]++;
-				AI3_cards[8]--;
-				if (AI3_cards[5] > 6)//if the three most amount cards all more than 6, don't need rainbow card
-				{
-					AI3_cards[5] = 6;
+			int bestArea = 0, bestBenefit = 0;
+			if (drawnCard == AICards[4].first || drawnCard == AICards[5].first || drawnCard == AICards[6].first) {
+				for (int i = 0; i < playerAmount; i++) {
+					if (areaTaken[i] || areaCards[i].size() >= 3) {
+						if (bestArea == i) {
+							bestArea++;
+						}
+					}
+					else if (benefits[i] < bestBenefit) {
+						bestArea = i;
+						bestBenefit = benefits[i];
+					}
 				}
 			}
+			else {
+				for (int i = 0; i < playerAmount; i++) {
+					if (areaTaken[i] || areaCards[i].size() >= 3) {
+						if (bestArea == i) {
+							bestArea++;
+						}
+					}
+					else if (benefits[i] > bestBenefit) {
+						bestArea = i;
+						bestBenefit = benefits[i];
+					}
+				}
+			}
+			areaCards[bestArea].push_back(drawnCard);
+			cout << "AI" << AIIndex << " placed \"" << colors[drawnCard] << "\" card in Area" << bestArea + 1 << ".\n";
+		}
+		show_each_hands();
+		show_table_cards();
+	}
+	else {
+		cout << "AI" << AIIndex << " decides to take back Area" << bestAction << ".\n";
+		for (int card : areaCards[bestAction - 1]) {
+			dealtCards[AIIndex][card]++;
+		}
+		areaCards[bestAction - 1].clear();
+		areaTaken[bestAction - 1] = true;
+		playerFinished[AIIndex] = true;
+		show_each_hands();
+		show_table_cards();
+	}
+}
+
+int next_player(int currentPlayer) {
+	int next = (currentPlayer + 1) % playerAmount;
+	//if player is finished, choose next player again
+	while (playerFinished[next]) {
+		next = (next + 1) % playerAmount;
+		//if next player is still the same and this player has done, mean this round is end
+		if (next == currentPlayer && playerFinished[next]) {
+			new_round();
+			break;
 		}
 	}
+	return next;
+}
 
-	//count point
-	int user_point = 0;
-	int AI1_point = 0;
-	int AI2_point = 0;
-	int AI3_point = 0;
-
-	//the 3 most cards points is positive
-	for (int i = 7; i >= 5; i--)
-	{
-		if (user_cards[i] == 6)
-			user_point += 21;
-		else if (user_cards[i] == 5)
-			user_point += 15;
-		else if (user_cards[i] == 4)
-			user_point += 10;
-		else if (user_cards[i] == 3)
-			user_point += 6;
-		else if (user_cards[i] == 2)
-			user_point += 3;
-		else if (user_cards[i] == 1)
-			user_point += 1;
-
-		if (AI1_cards[i] == 6)
-			AI1_point += 21;
-		else if (AI1_cards[i] == 5)
-			AI1_point += 15;
-		else if (AI1_cards[i] == 4)
-			AI1_point += 10;
-		else if (AI1_cards[i] == 3)
-			AI1_point += 6;
-		else if (AI1_cards[i] == 2)
-			AI1_point += 3;
-		else if (AI1_cards[i] == 1)
-			AI1_point += 1;
-
-		if (AI2_cards[i] == 6)
-			AI2_point += 21;
-		else if (AI2_cards[i] == 5)
-			AI2_point += 15;
-		else if (AI2_cards[i] == 4)
-			AI2_point += 10;
-		else if (AI2_cards[i] == 3)
-			AI2_point += 6;
-		else if (AI2_cards[i] == 2)
-			AI2_point += 3;
-		else if (AI2_cards[i] == 1)
-			AI2_point += 1;
-
-		if (AI3_cards[i] == 6)
-			AI3_point += 21;
-		else if (AI3_cards[i] == 5)
-			AI3_point += 15;
-		else if (AI3_cards[i] == 4)
-			AI3_point += 10;
-		else if (AI3_cards[i] == 3)
-			AI3_point += 6;
-		else if (AI3_cards[i] == 2)
-			AI3_point += 3;
-		else if (AI3_cards[i] == 1)
-			AI3_point += 1;
+void new_round() {
+	if (isLastRound) {
+		isGameEnd = true;
+		cout << "\n--- Game Over ---\n";
+		return;
 	}
-	//left cards points is negative
-	for (int i = 4; i >= 1; i--)
-	{
-		if (user_cards[i] == 6)
-			user_point -= 21;
-		else if (user_cards[i] == 5)
-			user_point -= 15;
-		else if (user_cards[i] == 4)
-			user_point -= 10;
-		else if (user_cards[i] == 3)
-			user_point -= 6;
-		else if (user_cards[i] == 2)
-			user_point -= 3;
-		else if (user_cards[i] == 1)
-			user_point -= 1;
+	cout << "\n--- New Round ---\n";
+	memset(playerFinished, false, sizeof(playerFinished));
+	memset(areaTaken, false, sizeof(areaTaken));
+	show_table_cards();
+}
 
-		if (AI1_cards[i] == 6)
-			AI1_point -= 21;
-		else if (AI1_cards[i] == 5)
-			AI1_point -= 15;
-		else if (AI1_cards[i] == 4)
-			AI1_point -= 10;
-		else if (AI1_cards[i] == 3)
-			AI1_point -= 6;
-		else if (AI1_cards[i] == 2)
-			AI1_point -= 3;
-		else if (AI1_cards[i] == 1)
-			AI1_point -= 1;
-
-		if (AI2_cards[i] == 6)
-			AI2_point -= 21;
-		else if (AI2_cards[i] == 5)
-			AI2_point -= 15;
-		else if (AI2_cards[i] == 4)
-			AI2_point -= 10;
-		else if (AI2_cards[i] == 3)
-			AI2_point -= 6;
-		else if (AI2_cards[i] == 2)
-			AI2_point -= 3;
-		else if (AI2_cards[i] == 1)
-			AI2_point -= 1;
-
-		if (AI3_cards[i] == 6)
-			AI3_point -= 21;
-		else if (AI3_cards[i] == 5)
-			AI3_point -= 15;
-		else if (AI3_cards[i] == 4)
-			AI3_point -= 10;
-		else if (AI3_cards[i] == 3)
-			AI3_point -= 6;
-		else if (AI3_cards[i] == 2)
-			AI3_point -= 3;
-		else if (AI3_cards[i] == 1)
-			AI3_point -= 1;
+void count_score() {
+	//if cards have more than 7, regard as 6 cards
+	for (int i = 0; i < playerAmount; i++) {
+		for (int j = 0; j < 7; j++) {
+			if (dealtCards[i][j] >= 7) {
+				dealtCards[i][j] = 6;
+			}
+		}
+	}
+	pair<int, int> scores[5];
+	for (int i = 0; i < playerAmount; i++) {
+		scores[i] = make_pair(i, 0);  // first: player index, second: score
+		sort(dealtCards[i], dealtCards[i] + 7, greater<int>());	//sort from big to small
+		//if have rainbow cards, add them to the three most color cards until they have 6 cards
+		while (dealtCards[i][7] > 0) {
+			//if the third most cards have 6 cards, then don;t need rainbow card
+			if (dealtCards[i][2] == 6) break;
+			if (dealtCards[i][0] < 6) {
+				dealtCards[i][0]++;
+				dealtCards[i][7]--;
+			}
+			else if (dealtCards[i][1] < 6) {
+				dealtCards[i][1]++;
+				dealtCards[i][7]--;
+			}
+			else if (dealtCards[i][2] < 6) {
+				dealtCards[i][2]++;
+				dealtCards[i][7]--;
+			}
+		}
+		//the three most color cards points are positive
+		for (int k = 0; k < 3; k++) {
+			if (dealtCards[i][k] == 6) scores[i].second += 21;
+			else if (dealtCards[i][k] == 5)	scores[i].second += 15;
+			else if (dealtCards[i][k] == 4)	scores[i].second += 10;
+			else if (dealtCards[i][k] == 3)	scores[i].second += 6;
+			else if (dealtCards[i][k] == 2)	scores[i].second += 3;
+			else if (dealtCards[i][k] == 1)	scores[i].second += 1;
+		}
+		//the rest are negetive
+		for (int l = 3; l < 7; l++) {
+			if (dealtCards[i][l] == 6) scores[i].second -= 21;
+			else if (dealtCards[i][l] == 5)	scores[i].second -= 15;
+			else if (dealtCards[i][l] == 4)	scores[i].second -= 10;
+			else if (dealtCards[i][l] == 3)	scores[i].second -= 6;
+			else if (dealtCards[i][l] == 2)	scores[i].second -= 3;
+			else if (dealtCards[i][l] == 1)	scores[i].second -= 1;
+		}
+		scores[i].second += dealtCards[i][8] * 2;
 	}
 
-
-
-	user_point = user_cards[9] * 2 + user_point;
-	AI1_point = AI1_cards[9] * 2 + AI1_point;
-	AI2_point = AI2_cards[9] * 2 + AI2_point;
-	AI3_point = AI3_cards[9] * 2 + AI3_point;
-
-	cout << "\nThe points you get:" << user_point << endl;
-	cout << "The points AI1 gets:" << AI1_point << endl;
-	cout << "The points AI2 gets:" << AI2_point << endl;
-	cout << "The points AI3 gets:" << AI3_point << endl;
-
-	pair<string, int> points_array[4];
-	points_array[0] = make_pair("user", user_point);
-	points_array[1] = make_pair("AI1", AI1_point);
-	points_array[2] = make_pair("AI2", AI2_point);
-	points_array[3] = make_pair("AI3", AI3_point);
-
-	sort(points_array , points_array + 4,cmp);
-
-	cout << "1st: " << points_array[0].first<<" - "<< points_array[0].second << endl << "2nd: " << points_array[1].first << " - " << points_array[1].second << endl << "3rd: " << points_array[2].first << " - " << points_array[2].second << endl << "4th: " << points_array[3].first << " - " << points_array[3].second << endl << endl;
-	cout << "play again?(if yes, input 1, if no, input 2)\n";
-	
-	int s;
+	cout << "\n--- Final Scores ---\n";
+	sort(scores, scores + playerAmount, cmp);
+	int ranking = 1;
+	for (int i = 0; i < playerAmount; i++) {
+		if (i > 0 && scores[i].second < scores[i - 1].second) {
+			ranking = i + 1;
+		}
+		cout << "Rank " << ranking << "\t";
+		if (scores[i].first == 0) {
+			cout << "User: " << scores[i].second << " points\n";
+		}
+		else {
+			cout << "AI" << scores[i].first << ": " << scores[i].second << " points\n";
+		}
+	}
+	cout << "\nplay again? (input 1 to play again)\n";
+	int s; 
 	cin >> s;
-	if (s == 1)
-	{
-		red = 0;
-		pink = 0;
-		yellow = 0;
-		orange = 0;
-		blue = 0;
-		green = 0;
-		gray = 0;
-		rainbow = 0;
-		plus2 = 0;		 
-		 
-		for (int i = 0; i < 10; i++)
-		{
-			user_cards[i] = 0;
-			AI1_cards[i] = 0;
-			AI2_cards[i] = 0;
-			AI3_cards[i] = 0;
-		}
-		for (int i = 0; i < 4; i++)
-		{
-			area1[i] = 0;
-			area2[i] = 0;
-			area3[i] = 0;
-			area4[i] = 0;
+	if (s == 1) {
+		cout << "Enter number of players (3-5): ";
+		while (scanf_s("%d", &playerAmount) != 1 || playerAmount < 3 || playerAmount > 5) {
+			// clear invalid input until \n
+			while (getchar() != '\n');
+			cout << "Invalid input. Please enter a number between 3 and 5: ";
 		}
 
-		last_round_or_not = not_last_round;
+		cardsLeft = 76;
+		for (int i = 0; i < 9; i++) {
+			eachCardsLeft[i] = 9;
+			for (int j = 0; j < 5; j++) {
+				dealtCards[j][i] = {};
+			}
+		}
+		eachCardsLeft[7] = { 3 };
+		eachCardsLeft[8] = { 10 };
+		memset(playerFinished, false, sizeof(playerFinished));
+		memset(areaTaken, false, sizeof(areaTaken));
+		isLastRound = false;
+		isGameEnd = false;
 
-		total_used_cards = 0;
-
-		is_user_last_one = not_last_one;
-		is_AI1_last_one = not_last_one;
-		is_AI2_last_one = not_last_one;
-		is_AI3_last_one = not_last_one;
-
-		area1_status = no_card;
-		area2_status = no_card;
-		area3_status = no_card;
-		area4_status = no_card;
-
-		user_status = play;
-		AI1_status = play;
-		AI2_status = play;
-		AI3_status = play;
-
-		four_people_first_round_draw();
-		four_player_game_of_user();
-	}
-	else
-		exit(0);
-}
-
-void AI1()
-{
-	cout << "\nAI1's turn\n";
-	if (area1_status != no_card && area1_status != been_taken)
-	{
-		cout << "AI1 take back area1\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI1_cards[area1[i]]++;
-			area1[i] = 0;
+		if (playerAmount == 3) {
+			srand(time(0));
+			// randomly remove one color
+			int removedColor = rand() % 7;
+			eachCardsLeft[removedColor] = 0;
+			cardsLeft -= 9;
 		}
-		area1_placed_card_amount = 0;
-		area1_status = been_taken;
-		AI1_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI2_status == end_play && AI3_status == end_play)
-		{
-			is_AI1_last_one = last_one;
-		}
-		AI1_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area2_status != no_card && area2_status != been_taken)
-	{
-		cout << "AI1 take back area2\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI1_cards[area2[i]]++;
-			area2[i] = 0;
-		}
-		area2_placed_card_amount = 0;
-		area2_status = been_taken;
-		AI1_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI2_status == end_play && AI3_status == end_play)
-		{
-			is_AI1_last_one = last_one;
-		}
-		AI1_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area3_status != no_card && area3_status != been_taken)
-	{
-		cout << "AI1 take back area3\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI1_cards[area3[i]]++;
-			area3[i] = 0;
-		}
-		area3_placed_card_amount = 0;
-		area3_status = been_taken;
-		AI1_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI2_status == end_play && AI3_status == end_play)
-		{
-			is_AI1_last_one = last_one;
-		}
-		AI1_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area4_status != no_card && area4_status != been_taken)
-	{
-		cout << "AI1 take back area4\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI1_cards[area4[i]]++;
-			area4[i] = 0;
-		}
-		area4_placed_card_amount = 0;
-		area4_status = been_taken;
-		AI1_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI2_status == end_play && AI3_status == end_play)
-		{
-			is_AI1_last_one = last_one;
-		}
-		AI1_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	//if can't take back area, mean the area left all don't have card, so place the card
-	else
-	{
-		cout << "AI1 draw a card\n";
-		int drawed_card_by_AI1 = draw_card();
-		if (area1_status != been_taken)
-		{
-			cout << "AI1 place card at area1\n";
-			area1[1] = drawed_card_by_AI1;
-			area1_status = can_put_card;
-			area1_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area2_status != been_taken)
-		{
-			cout << "AI1 place card at area2\n";
-			area2[1] = drawed_card_by_AI1;
-			area2_status = can_put_card;
-			area2_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area3_status != been_taken)
-		{
-			cout << "AI1 place card at area3\n";
-			area3[1] = drawed_card_by_AI1;
-			area3_status = can_put_card;
-			area3_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area4_status != been_taken)
-		{
-			cout << "AI1 place card at area4\n";
-			area4[1] = drawed_card_by_AI1;
-			area4_status = can_put_card;
-			area4_placed_card_amount++;
-			show_table_cards();
-		}
-	}
-	AI1_decide_who_is_next_player();
-	decide_fisrt_player_next_round();
-}
-
-void AI2()
-{
-	cout << "\nAI2's turn\n";
-	if (area1_status != no_card && area1_status != been_taken)
-	{
-		cout << "AI2 take back area1\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI2_cards[area1[i]]++;
-			area1[i] = 0;
-		}
-		area1_placed_card_amount = 0;
-		area1_status = been_taken;
-		AI2_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI3_status == end_play)
-		{
-			is_AI2_last_one = last_one;
-		}
-		AI2_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area2_status != no_card && area2_status != been_taken)
-	{
-		cout << "AI2 take back area2\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI2_cards[area2[i]]++;
-			area2[i] = 0;
-		}
-		area2_placed_card_amount = 0;
-		area2_status = been_taken;
-		AI2_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI3_status == end_play)
-		{
-			is_AI2_last_one = last_one;
-		}
-		AI2_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area3_status != no_card && area3_status != been_taken)
-	{
-		cout << "AI2 take back area3\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI2_cards[area3[i]]++;
-			area3[i] = 0;
-		}
-		area3_placed_card_amount = 0;
-		area3_status = been_taken;
-		AI2_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI3_status == end_play)
-		{
-			is_AI2_last_one = last_one;
-		}
-		AI2_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area4_status != no_card && area4_status != been_taken)
-	{
-		cout << "AI2 take back area4\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI2_cards[area4[i]]++;
-			area4[i] = 0;
-		}
-		area4_placed_card_amount = 0;
-		area4_status = been_taken;
-		AI2_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI3_status == end_play)
-		{
-			is_AI2_last_one = last_one;
-		}
-		AI2_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	//if can't take back area, mean the area left all don't have card, so place the card
-	else
-	{
-		cout << "AI2 draw a card\n";
-		int drawed_card_by_AI2 = draw_card();
-		if (area1_status != been_taken)
-		{
-			cout << "AI2 place card at area1\n";
-			area1[1] = drawed_card_by_AI2;
-			area1_status = can_put_card;
-			area1_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area2_status != been_taken)
-		{
-			cout << "AI2 place card at area2\n";
-			area2[1] = drawed_card_by_AI2;
-			area2_status = can_put_card;
-			area2_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area3_status != been_taken)
-		{
-			cout << "AI2 place card at area3\n";
-			area3[1] = drawed_card_by_AI2;
-			area3_status = can_put_card;
-			area3_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area4_status != been_taken)
-		{
-			cout << "AI2 place card at area4\n";
-			area4[1] = drawed_card_by_AI2;
-			area4_status = can_put_card;
-			area4_placed_card_amount++;
-			show_table_cards();
-		}
-	}
-	AI2_decide_who_is_next_player();
-	decide_fisrt_player_next_round();
-}
-
-void AI3()
-{
-	cout << "\nAI3's turn\n";
-	if (area1_status != no_card && area1_status != been_taken)
-	{
-		cout << "AI3 take back area1\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI3_cards[area1[i]]++;
-			area1[i] = 0;
-		}
-		area1_placed_card_amount = 0;
-		area1_status = been_taken;
-		AI3_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI2_status == end_play)
-		{
-			is_AI3_last_one = last_one;
-		}
-		AI3_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area2_status != no_card && area2_status != been_taken)
-	{
-		cout << "AI3 take back area2\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI3_cards[area2[i]]++;
-			area2[i] = 0;
-		}
-		area2_placed_card_amount = 0;
-		area2_status = been_taken;
-		AI3_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI2_status == end_play)
-		{
-			is_AI3_last_one = last_one;
-		}
-		AI3_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area3_status != no_card && area3_status != been_taken)
-	{
-		cout << "AI3 take back area3\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI3_cards[area3[i]]++;
-			area3[i] = 0;
-		}
-		area3_placed_card_amount = 0;
-		area3_status = been_taken;
-		AI3_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI2_status == end_play)
-		{
-			is_AI3_last_one = last_one;
-		}
-		AI3_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	else if (area4_status != no_card && area4_status != been_taken)
-	{
-		cout << "AI3 take back area4\n";
-		for (int i = 1; i < 5; i++)
-		{
-			AI3_cards[area4[i]]++;
-			area4[i] = 0;
-		}
-		area4_placed_card_amount = 0;
-		area4_status = been_taken;
-		AI3_status = end_play;
-		show_each_player_cards();
-		show_table_cards();
-		if (user_status == end_play && AI1_status == end_play && AI2_status == end_play)
-		{
-			is_AI3_last_one = last_one;
-		}
-		AI3_decide_who_is_next_player();
-		decide_fisrt_player_next_round();
-	}
-	//if can't take back area, mean the area left all don't have card, so place the card
-	else
-	{
-		cout << "AI3 draw a card\n";
-		int drawed_card_by_AI3 = draw_card();
-		if (area1_status != been_taken)
-		{
-			cout << "AI3 place card at area1\n";
-			area1[1] = drawed_card_by_AI3;
-			area1_status = can_put_card;
-			area1_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area2_status != been_taken)
-		{
-			cout << "AI3 place card at area2\n";
-			area2[1] = drawed_card_by_AI3;
-			area2_status = can_put_card;
-			area2_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area3_status != been_taken)
-		{
-			cout << "AI3 place card at area3\n";
-			area3[1] = drawed_card_by_AI3;
-			area3_status = can_put_card;
-			area3_placed_card_amount++;
-			show_table_cards();
-		}
-		else if (area4_status != been_taken)
-		{
-			cout << "AI3 place card at area4\n";
-			area4[1] = drawed_card_by_AI3;
-			area4_status = can_put_card;
-			area4_placed_card_amount++;
-			show_table_cards();
-		}
-	}
-	AI3_decide_who_is_next_player();
-	decide_fisrt_player_next_round();
-}
-
-int add_to_each_card_sum(int x)//calculate how many cards of each colors had been drawed 
-{
-	int redrawed_card;
-	if (x == 1)
-	{
-		red++;
-		if (red >= 10)//if red had been draw 10 times, draw again
-		{
-			red--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 2)
-	{
-		pink++;
-		if (pink >= 10)//if pink had been draw 10 times, draw again
-		{
-			pink--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 3)
-	{
-		yellow++;
-		if (yellow >= 10)//if yellow had been draw 10 times, draw again
-		{
-			yellow--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 4)
-	{
-		orange++;
-		if (orange >= 10)//if orange had been draw 10 times, draw again
-		{
-			orange--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 5)
-	{
-		blue++;
-		if (blue >= 10)//if blue had been draw 10 times, draw again
-		{
-			blue--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 6)
-	{
-		green++;
-		if (green >= 10)//if green had been draw 10 times, draw again
-		{
-			green--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 7)
-	{
-		gray++;
-		if (gray >= 10)//if gray had been draw 10 times, draw again
-		{
-			gray--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 8)
-	{
-		rainbow++;
-		if (rainbow >= 4)//if rainbow had been draw 4 times, draw again
-		{
-			rainbow--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-	if (x == 9)
-	{
-		plus2++;
-		if (plus2 >= 11)//if plus2 had been draw 11 times, draw again
-		{
-			plus2--;
-			redrawed_card = draw_card_again();
-			redrawed_card = add_to_each_card_sum(redrawed_card);
-			return redrawed_card;
-		}
-		else
-			return x;
-	}
-}
-
-int draw_card_again()//without adding total card amount
-{
-	int card;
-	card = 1 + rand() % 9;
-	return card;
-}
-
-void decide_fisrt_player_next_round()
-{
-
-	//if user is the last person and isn't last round, then be the first to take action next round
-	if (is_user_last_one == last_one && last_round_or_not == not_last_round)
-	{
-		 
-		 
-		for (int i = 0; i < 4; i++)
-		{
-			area1[i] = 0;
-			area2[i] = 0;
-			area3[i] = 0;
-			area4[i] = 0;
-		}
-
-		area1_placed_card_amount = 0;
-		area2_placed_card_amount = 0;
-		area3_placed_card_amount = 0;
-		area4_placed_card_amount = 0;
-
-		is_user_last_one = not_last_one;
-		is_AI1_last_one = not_last_one;
-		is_AI2_last_one = not_last_one;
-		is_AI3_last_one = not_last_one;
-
-		area1_status = no_card;
-		area2_status = no_card;
-		area3_status = no_card;
-		area4_status = no_card;
-
-		user_status = play;
-		AI1_status = play;
-		AI2_status = play;
-		AI3_status = play;
-
-		four_player_game_of_user();
-	}
-	//if AI1 is the last person and isn't last round, then be the first to take action next round
-	else if (is_AI1_last_one == last_one && last_round_or_not == not_last_round)
-	{
-		 
-		 
-		 
-		for (int i = 0; i < 4; i++)
-		{
-			area1[i] = 0;
-			area2[i] = 0;
-			area3[i] = 0;
-			area4[i] = 0;
-		}
-
-		area1_placed_card_amount = 0;
-		area2_placed_card_amount = 0;
-		area3_placed_card_amount = 0;
-		area4_placed_card_amount = 0;
-
-		is_user_last_one = not_last_one;
-		is_AI1_last_one = not_last_one;
-		is_AI2_last_one = not_last_one;
-		is_AI3_last_one = not_last_one;
-
-		area1_status = no_card;
-		area2_status = no_card;
-		area3_status = no_card;
-		area4_status = no_card;
-
-		user_status = play;
-		AI1_status = play;
-		AI2_status = play;
-		AI3_status = play;
-
-		AI1();
-	}
-	//if AI2 is the last person and isn't last round, then be the first to take action next round
-	else if (is_AI2_last_one == last_one && last_round_or_not == not_last_round)
-	{
-		 
-		 
-		 
-		area4[4] = {};
-
-		area1_placed_card_amount = 0;
-		area2_placed_card_amount = 0;
-		area3_placed_card_amount = 0;
-		area4_placed_card_amount = 0;
-
-		is_user_last_one = not_last_one;
-		is_AI1_last_one = not_last_one;
-		is_AI2_last_one = not_last_one;
-		is_AI3_last_one = not_last_one;
-
-		area1_status = no_card;
-		area2_status = no_card;
-		area3_status = no_card;
-		area4_status = no_card;
-
-		user_status = play;
-		AI1_status = play;
-		AI2_status = play;
-		AI3_status = play;
-
-		AI2();
-	}
-	//if AI3 is the last person and isn't last round, then be the first to take action next round
-	else if (is_AI3_last_one == last_one && last_round_or_not == not_last_round)
-	{
-		 
-		 
-	for (int i = 0; i < 4; i++)
-	{
-		area1[i] = 0;
-		area2[i] = 0;
-		area3[i] = 0;
-		area4[i] = 0;
-	}
-
-		area1_placed_card_amount = 0;
-		area2_placed_card_amount = 0;
-		area3_placed_card_amount = 0;
-		area4_placed_card_amount = 0;
-
-		is_user_last_one = not_last_one;
-		is_AI1_last_one = not_last_one;
-		is_AI2_last_one = not_last_one;
-		is_AI3_last_one = not_last_one;
-
-		area1_status = no_card;
-		area2_status = no_card;
-		area3_status = no_card;
-		area4_status = no_card;
-
-		user_status = play;
-		AI1_status = play;
-		AI2_status = play;
-		AI3_status = play;
-
-		AI3();
-	}
-	//when last round
-	else if (user_status == end_play && AI1_status == end_play && AI2_status == end_play && AI3_status == end_play && last_round_or_not == last_round)
-	{
-		count_point();
-	}
-}
-
-void user_decide_who_is_next_player()
-{
-	//check if user is not last person and who will be next
-	if (user_status == play && AI1_status == end_play && AI2_status == end_play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == end_play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == end_play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-}
-
-void AI1_decide_who_is_next_player()
-{
-	//check if AI1 is the not last person and who will be next
-	if (user_status == end_play && AI1_status == play && AI2_status == end_play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == end_play && AI1_status == end_play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == end_play && AI1_status == end_play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == end_play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-}
-
-void AI2_decide_who_is_next_player()
-{
-	//check if AI2 is the not last person and who will be next
-	if (user_status == end_play && AI1_status == end_play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == end_play && AI1_status == end_play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == end_play && AI1_status == end_play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-}
-
-void AI3_decide_who_is_next_player()
-{
-	//check if AI3 is the not last person and who will be next
-	if (user_status == end_play && AI1_status == end_play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI3();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == end_play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == end_play && AI3_status == end_play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == play && AI1_status == end_play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		four_player_game_of_user();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == end_play && AI1_status == play && AI2_status == end_play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI1();
-	}
-	else if (user_status == end_play && AI1_status == end_play && AI2_status == play && AI3_status == play && is_user_last_one == not_last_one && is_AI1_last_one == not_last_one && is_AI2_last_one == not_last_one && is_AI3_last_one == not_last_one)
-	{
-		AI2();
-	}
+		first_deal(playerAmount);
+		game_loop(playerAmount, 0);
+		count_score();
+	}
+	else exit(0);
 }
