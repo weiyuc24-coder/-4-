@@ -15,7 +15,7 @@ bool playerFinished[5] = {false, false, false, false, false};  // whether player
 bool areaTaken[5] = {false, false, false, false, false};       // whether area has been taken
 string colors[9] = {"Red", "Pink", "Yellow", "Orange", "Blue", "Green", "Gray", "Rainbow", "Plus2"};
 bool isLastRound = false, isGameEnd = false;
-int finalScores[6] = {1, 3, 6, 10, 15, 21};
+int finalScores[7] = {0, 1, 3, 6, 10, 15, 21};
 
 void first_deal(int);
 void show_each_hands();
@@ -381,12 +381,12 @@ void count_score() {
                         dealtCards[i][7] -= (6 - dealtCards[i][j]);
                         dealtCards[i][j] = 6;
                     } else {
-                        dealtCards[i][j] += dealtCards[i][8];
+                        dealtCards[i][j] += dealtCards[i][7];
                         dealtCards[i][7] = 0;
                     }
                 }
             }
-            dealtCards[i][j] = finalScores[dealtCards[i][j] - 1];
+            dealtCards[i][j] = finalScores[dealtCards[i][j]];
         }
     }
     pair<int, int> scores[5];
@@ -394,8 +394,11 @@ void count_score() {
         scores[i] = make_pair(i, 0);  // first: player index, second: score
         sort(dealtCards[i], dealtCards[i] + 7, greater<int>());
         scores[i].second += dealtCards[i][0] + dealtCards[i][1] + dealtCards[i][2];
+        cout << "Player " << i << " top 3 cards score: " << scores[i].second << "\n";
         scores[i].second += dealtCards[i][8] * 2;
+        cout << "Player " << i << " +2 cards score: " << dealtCards[i][8] * 2 << "\n";
         scores[i].second -= dealtCards[i][3] + dealtCards[i][4] + dealtCards[i][5] + dealtCards[i][6];
+        cout << "Player " << i << " bottom 4 cards penalty: -" << dealtCards[i][3] + dealtCards[i][4] + dealtCards[i][5] + dealtCards[i][6] << "\n";
     }
 
     cout << "\n--- Final Scores ---\n";
