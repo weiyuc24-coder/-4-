@@ -15,6 +15,7 @@ bool playerFinished[5] = {false, false, false, false, false};  // whether player
 bool areaTaken[5] = {false, false, false, false, false};       // whether area has been taken
 string colors[9] = {"Red", "Pink", "Yellow", "Orange", "Blue", "Green", "Gray", "Rainbow", "Plus2"};
 bool isLastRound = false, isGameEnd = false;
+int finalScores[6] = {1, 3, 6, 10, 15, 21};
 
 void first_deal(int);
 void show_each_hands();
@@ -242,13 +243,13 @@ void AI(int AIIndex) {
             areaLeft -= areaCards[i].size();
             for (int card : areaCards[i]) {
                 if (card == 7 && AICards[0].second + AICards[1].second + AICards[2].second < 18 - AICards[7].second) {
-                    worthAction[i + 1] += 5;
+                    worthAction[i + 1] += 6;
                 } else if (card == 8) {
-                    worthAction[i + 1] += 4;
+                    worthAction[i + 1] += 3;
                 } else {
                     for (int j = 0; j < 3; j++) {
                         if (card == AICards[j].first) {
-                            worthAction[i + 1] += (4 - j) * AICards[j].second;
+                            worthAction[i + 1] += (4 - j) * AICards[j].second * 3;
                             break;
                         }
                     }
@@ -370,20 +371,29 @@ void new_round() {
 
 void count_score() {
     for (int i = 0; i < playerAmount; i++) {
+        sort(dealtCards[i], dealtCards[i] + 7, greater<int>());
         for (int j = 0; j < 7; j++) {
             if (dealtCards[i][j] >= 7) {
                 dealtCards[i][j] = 6;
+            } if (i < 3) {
+                if (dealtCards[i][j] < 6) {
+                    if (dealtCards[i][7] > 6 - dealtCards[i][j]) {
+                        dealtCards[i][7] -= (6 - dealtCards[i][j]);
+                        dealtCards[i][j] = 6;
+                    } else {
+                        dealtCards[i][j] += dealtCards[i][8];
+                        dealtCards[i][7] = 0;
+                    }
+                }
             }
+            dealtCards[i][j] = finalScores[dealtCards[i][j] - 1];
         }
     }
     pair<int, int> scores[5];
     for (int i = 0; i < playerAmount; i++) {
         scores[i] = make_pair(i, 0);  // first: player index, second: score
         sort(dealtCards[i], dealtCards[i] + 7, greater<int>());
-        scores[i].second += dealtCards[i][0] + dealtCards[i][1] + dealtCards[i][2] + dealtCards[i][7];
-        if (scores[i].second > 18) {
-            scores[i].second = 18;
-        }
+        scores[i].second += dealtCards[i][0] + dealtCards[i][1] + dealtCards[i][2];
         scores[i].second += dealtCards[i][8] * 2;
         scores[i].second -= dealtCards[i][3] + dealtCards[i][4] + dealtCards[i][5] + dealtCards[i][6];
     }
