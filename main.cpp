@@ -246,44 +246,17 @@ bool cmp(pair<int, int> a, pair<int, int> b) {
 }
 
 void AI(int AIIndex) {
-	int worthAction[6] = { 8, 0, 0, 0, 0, 0 };  // 0: draw, 1-5: take area 1-5
-	pair<int, int> AICards[9];                // color, count
-	for (int i = 0; i < 9; i++) {
-		AICards[i] = make_pair(i, dealtCards[AIIndex][i]);
-	}
-	sort(AICards, AICards + 7, cmp);
-	int areaLeft = 3 * playerAmount;
+	bool doDraw = rand()%2;
+	int spacaeLeft = 3 * playerAmount, cardsAmount = 0;
 	for (int i = 0; i < playerAmount; i++) {
-		if (areaTaken[i]) {
-			worthAction[i + 1] = -100;  // cannot take taken area
-			areaLeft -= 3;
-		}
-		else if (areaCards[i].size() > 1) {
-			worthAction[0] -= 3;
-			areaLeft -= areaCards[i].size();
-			for (int card : areaCards[i]) {
-				if (card == 7 && AICards[0].second + AICards[1].second + AICards[2].second < 18 - AICards[7].second) {
-					worthAction[i + 1] += 5;
-				}
-				else if (card == 8) {
-					worthAction[i + 1] += 4;
-				}
-				else {
-					for (int j = 0; j < 3; j++) {
-						if (card == AICards[j].first) {
-							worthAction[i + 1] += (4 - j) * AICards[j].second;
-							break;
-						}
-					}
-				}
-			}
-		}
+		if (areaTaken[i]) spacaeLeft -= 3; // can't put in taken area
+		spacaeLeft -= areaCards[i].size;
+		cardsAmount += areaCards[i].size;
 	}
-	if (areaLeft == 0) {
-		worthAction[0] = -100;  // cannot draw if no space to place
-	}
-	int bestAction = max_element(worthAction, worthAction + playerAmount + 1) - worthAction;
-	if (bestAction == 0) {
+	if (spacaeLeft == 0) doDraw = false;
+	else if(cardsAmount == 0) doDraw = true;
+
+	if(doDraw){
 		cout << "AI" << AIIndex << " decides to draw a card to place.\n";
 		srand(time(0));
 		int drawnCard;
@@ -294,81 +267,37 @@ void AI(int AIIndex) {
 				cardsLeft--;
 				if (cardsLeft == 14) {
 					isLastRound = true;
-					cout << "\n!!!Last round triggered!!!\n\n";
+					cout << "\n!!!Last round!!!\n\n";
 				}
 				break;
 			}
 		}
-		cout << "AI" << AIIndex << " drew a \"" << colors[drawnCard] << "\" card.\n";
-		// place drawn card and place the area that maximizes its benefit
-		if (drawnCard == 7 || drawnCard == 8) {
-			int leastFilledArea = -1, minCards = 3;
-			for (int i = 0; i < playerAmount; i++) {
-				if (!areaTaken[i] && areaCards[i].size() < minCards) {
-					minCards = areaCards[i].size();
-					leastFilledArea = i;
-				}
+		cout << "AI" << AIIndex << " drew a \"" << colors[drawnCard] << "\" card.\n";	
+		//place card
+		for(int i=0; i< playerAmount; i++) {
+			if(!areaTaken[i]&&areaCards[i].size() < 3){
+				areaCards[i].push_back(drawnCard);
+				cout << "AI" << AIIndex << " placed \"" << colors[drawnCard] << "\" card in Area" << i + 1 << ".\n";
+				break;
 			}
-			areaCards[leastFilledArea].push_back(drawnCard);
-			cout << "AI" << AIIndex << " placed \"" << colors[drawnCard] << "\" card in Area" << leastFilledArea + 1 << ".\n";
-		}
-		else {
-			int benefits[5] = { 0 };
-			for (int i = 0; i < playerAmount; i++) {
-				if (!areaTaken[i] && areaCards[i].size() < 3) {
-					int benefit = 0;
-					for (int j = 0; j < 3; j++) {
-						if (drawnCard == AICards[j].first) {
-							benefit += (4 - j) * AICards[j].second;
-							break;
-						}
-					}
-					benefits[i] = benefit;
-				}
-			}
-			int bestArea = 0, bestBenefit = 0;
-			if (drawnCard == AICards[4].first || drawnCard == AICards[5].first || drawnCard == AICards[6].first) {
-				for (int i = 0; i < playerAmount; i++) {
-					if (areaTaken[i] || areaCards[i].size() >= 3) {
-						if (bestArea == i) {
-							bestArea++;
-						}
-					}
-					else if (benefits[i] < bestBenefit) {
-						bestArea = i;
-						bestBenefit = benefits[i];
-					}
-				}
-			}
-			else {
-				for (int i = 0; i < playerAmount; i++) {
-					if (areaTaken[i] || areaCards[i].size() >= 3) {
-						if (bestArea == i) {
-							bestArea++;
-						}
-					}
-					else if (benefits[i] > bestBenefit) {
-						bestArea = i;
-						bestBenefit = benefits[i];
-					}
-				}
-			}
-			areaCards[bestArea].push_back(drawnCard);
-			cout << "AI" << AIIndex << " placed \"" << colors[drawnCard] << "\" card in Area" << bestArea + 1 << ".\n";
-		}
-		show_each_hands();
-		show_table_cards();
+		}			
 	}
-	else {
-		cout << "AI" << AIIndex << " decides to take back Area" << bestAction << ".\n";
-		for (int card : areaCards[bestAction - 1]) {
-			dealtCards[AIIndex][card]++;
+	//take area
+	else{
+		for(int i=0; i<playerAmount; i++){
+			if(!areaTaken[i]&&areaCards[i].size>0){				
+				for (int card : areaCards[i]) {
+					dealtCards[AIIndex][card]++;
+				}
+				cout << "AI" << AIIndex << " decides to take back Area" << i + 1 << ".\n";
+				areaCards[bestAction - 1].clear();
+				areaTaken[bestAction - 1] = true;
+				playerFinished[AIIndex] = true;
+				show_each_hands();
+				show_table_cards();
+				break;
+			}
 		}
-		areaCards[bestAction - 1].clear();
-		areaTaken[bestAction - 1] = true;
-		playerFinished[AIIndex] = true;
-		show_each_hands();
-		show_table_cards();
 	}
 }
 
