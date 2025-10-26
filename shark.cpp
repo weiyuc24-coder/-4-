@@ -30,20 +30,48 @@ void new_round();
 void count_score();
 
 int main() {
-    cout << "Enter number of players (3-5): ";
-    while (scanf("%d", &playerAmount) != 1 || playerAmount < 3 || playerAmount > 5) {
-        while (getchar() != '\n');  // clear invalid input
-        cout << "Invalid input. Please enter a number between 3 and 5: ";
+    bool doExit = false;
+    while (!doExit) {
+        cout << "\n=== Welcome to Join the Game ===\n";
+        cout << "Enter number of players (3-5): ";
+        while (scanf("%d", &playerAmount) != 1 || playerAmount < 3 || playerAmount > 5) {
+            while (getchar() != '\n');  // clear invalid input
+            cout << "Invalid input. Please enter a number between 3 and 5: ";
+        }
+        if (playerAmount == 3) {
+            srand(time(0));
+            int removedColor = rand() % 7;  // randomly remove one color
+            eachCardsLeft[removedColor] = 0;
+            cardsLeft -= 9;
+        }
+        first_deal(playerAmount);
+        game_loop(playerAmount, 0);
+        count_score();
+        cout << "\nDo you want to play again? (1: Yes, 0: No): ";
+        int playAgain;
+        while (scanf("%d", &playAgain) != 1 || (playAgain != 0 && playAgain != 1)) {
+            while (getchar() != '\n');  // clear invalid input
+            cout << "Invalid input. Please enter 1 for Yes or 0 for No: ";
+        }
+        if (playAgain == 0) {
+            doExit = true;
+        } else {
+            // reset game state
+            cardsLeft = 76;
+            memset(eachCardsLeft, 9, sizeof(eachCardsLeft));
+            eachCardsLeft[7] = 3;
+            eachCardsLeft[8] = 10;
+            memset(dealtCards, 0, sizeof(dealtCards));
+            for (int i = 0; i < 5; i++) {
+                areaCards[i].clear();
+            }
+            memset(playerFinished, false, sizeof(playerFinished));
+            memset(areaTaken, false, sizeof(areaTaken));
+            isLastRound = false;
+            isGameEnd = false;
+        }
     }
-    if (playerAmount == 3) {
-        srand(time(0));
-        int removedColor = rand() % 7;  // randomly remove one color
-        eachCardsLeft[removedColor] = 0;
-        cardsLeft -= 9;
-    }
-    first_deal(playerAmount);
-    game_loop(playerAmount, 0);
-    count_score();
+
     return 0;
 }
 
@@ -375,7 +403,8 @@ void count_score() {
         for (int j = 0; j < 7; j++) {
             if (dealtCards[i][j] >= 7) {
                 dealtCards[i][j] = 6;
-            } if (i < 3) {
+            }
+            if (i < 3) {
                 if (dealtCards[i][j] < 6) {
                     if (dealtCards[i][7] > 6 - dealtCards[i][j]) {
                         dealtCards[i][7] -= (6 - dealtCards[i][j]);
@@ -407,9 +436,9 @@ void count_score() {
         }
         cout << "Rank " << ranking << "\t";
         if (scores[i].first == 0) {
-            cout << "User: " << scores[i].second << " points\n";
+            cout << "User\t" << scores[i].second << " points\n";
         } else {
-            cout << "AI" << scores[i].first << ": " << scores[i].second << " points\n";
+            cout << "AI" << scores[i].first << "\t" << scores[i].second << " points\n";
         }
     }
 }
