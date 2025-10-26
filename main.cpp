@@ -290,8 +290,8 @@ void AI(int AIIndex) {
 					dealtCards[AIIndex][card]++;
 				}
 				cout << "AI" << AIIndex << " decides to take back Area" << i + 1 << ".\n";
-				areaCards[bestAction - 1].clear();
-				areaTaken[bestAction - 1] = true;
+				areaCards[i].clear();
+				areaTaken[i] = true;
 				playerFinished[AIIndex] = true;
 				show_each_hands();
 				show_table_cards();
