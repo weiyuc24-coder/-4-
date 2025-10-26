@@ -15,6 +15,7 @@ bool playerFinished[5] = {false, false, false, false, false};  // whether player
 bool areaTaken[5] = {false, false, false, false, false};       // whether area has been taken
 string colors[9] = {"Red", "Pink", "Yellow", "Orange", "Blue", "Green", "Gray", "Rainbow", "Plus2"};
 bool isLastRound = false, isGameEnd = false;
+int finalScores[7] = {0, 1, 3, 6, 10, 15, 21};
 
 void first_deal(int);
 void show_each_hands();
@@ -29,20 +30,48 @@ void new_round();
 void count_score();
 
 int main() {
-    cout << "Enter number of players (3-5): ";
-    while (scanf("%d", &playerAmount) != 1 || playerAmount < 3 || playerAmount > 5) {
-        while (getchar() != '\n');  // clear invalid input
-        cout << "Invalid input. Please enter a number between 3 and 5: ";
+    bool doExit = false;
+    while (!doExit) {
+        cout << "\n=== Welcome to Join the Game ===\n";
+        cout << "Enter number of players (3-5): ";
+        while (scanf("%d", &playerAmount) != 1 || playerAmount < 3 || playerAmount > 5) {
+            while (getchar() != '\n');  // clear invalid input
+            cout << "Invalid input. Please enter a number between 3 and 5: ";
+        }
+        if (playerAmount == 3) {
+            srand(time(0));
+            int removedColor = rand() % 7;  // randomly remove one color
+            eachCardsLeft[removedColor] = 0;
+            cardsLeft -= 9;
+        }
+        first_deal(playerAmount);
+        game_loop(playerAmount, 0);
+        count_score();
+        cout << "\nDo you want to play again? (1: Yes, 0: No): ";
+        int playAgain;
+        while (scanf("%d", &playAgain) != 1 || (playAgain != 0 && playAgain != 1)) {
+            while (getchar() != '\n');  // clear invalid input
+            cout << "Invalid input. Please enter 1 for Yes or 0 for No: ";
+        }
+        if (playAgain == 0) {
+            doExit = true;
+        } else {
+            // reset game state
+            cardsLeft = 76;
+            memset(eachCardsLeft, 9, sizeof(eachCardsLeft));
+            eachCardsLeft[7] = 3;
+            eachCardsLeft[8] = 10;
+            memset(dealtCards, 0, sizeof(dealtCards));
+            for (int i = 0; i < 5; i++) {
+                areaCards[i].clear();
+            }
+            memset(playerFinished, false, sizeof(playerFinished));
+            memset(areaTaken, false, sizeof(areaTaken));
+            isLastRound = false;
+            isGameEnd = false;
+        }
     }
-    if (playerAmount == 3) {
-        srand(time(0));
-        int removedColor = rand() % 7;  // randomly remove one color
-        eachCardsLeft[removedColor] = 0;
-        cardsLeft -= 9;
-    }
-    first_deal(playerAmount);
-    game_loop(playerAmount, 0);
-    count_score();
+
     return 0;
 }
 
@@ -242,13 +271,13 @@ void AI(int AIIndex) {
             areaLeft -= areaCards[i].size();
             for (int card : areaCards[i]) {
                 if (card == 7 && AICards[0].second + AICards[1].second + AICards[2].second < 18 - AICards[7].second) {
-                    worthAction[i + 1] += 5;
+                    worthAction[i + 1] += 6;
                 } else if (card == 8) {
-                    worthAction[i + 1] += 4;
+                    worthAction[i + 1] += 3;
                 } else {
                     for (int j = 0; j < 3; j++) {
                         if (card == AICards[j].first) {
-                            worthAction[i + 1] += (4 - j) * AICards[j].second;
+                            worthAction[i + 1] += (4 - j) * AICards[j].second * 3;
                             break;
                         }
                     }
@@ -370,20 +399,30 @@ void new_round() {
 
 void count_score() {
     for (int i = 0; i < playerAmount; i++) {
+        sort(dealtCards[i], dealtCards[i] + 7, greater<int>());
         for (int j = 0; j < 7; j++) {
             if (dealtCards[i][j] >= 7) {
                 dealtCards[i][j] = 6;
             }
+            if (i < 3) {
+                if (dealtCards[i][j] < 6) {
+                    if (dealtCards[i][7] > 6 - dealtCards[i][j]) {
+                        dealtCards[i][7] -= (6 - dealtCards[i][j]);
+                        dealtCards[i][j] = 6;
+                    } else {
+                        dealtCards[i][j] += dealtCards[i][7];
+                        dealtCards[i][7] = 0;
+                    }
+                }
+            }
+            dealtCards[i][j] = finalScores[dealtCards[i][j]];
         }
     }
     pair<int, int> scores[5];
     for (int i = 0; i < playerAmount; i++) {
         scores[i] = make_pair(i, 0);  // first: player index, second: score
         sort(dealtCards[i], dealtCards[i] + 7, greater<int>());
-        scores[i].second += dealtCards[i][0] + dealtCards[i][1] + dealtCards[i][2] + dealtCards[i][7];
-        if (scores[i].second > 18) {
-            scores[i].second = 18;
-        }
+        scores[i].second += dealtCards[i][0] + dealtCards[i][1] + dealtCards[i][2];
         scores[i].second += dealtCards[i][8] * 2;
         scores[i].second -= dealtCards[i][3] + dealtCards[i][4] + dealtCards[i][5] + dealtCards[i][6];
     }
@@ -397,9 +436,9 @@ void count_score() {
         }
         cout << "Rank " << ranking << "\t";
         if (scores[i].first == 0) {
-            cout << "User: " << scores[i].second << " points\n";
+            cout << "User\t" << scores[i].second << " points\n";
         } else {
-            cout << "AI" << scores[i].first << ": " << scores[i].second << " points\n";
+            cout << "AI" << scores[i].first << "\t" << scores[i].second << " points\n";
         }
     }
 }
